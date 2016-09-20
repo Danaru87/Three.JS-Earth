@@ -77,7 +77,6 @@
         var planeGeometry = new THREE.SphereGeometry(100, 50, 50);
         var planeMaterial = new THREE.MeshPhongMaterial({map : textureEspace, side: THREE.BackSide });
         var plane = new THREE.Mesh(planeGeometry, planeMaterial);
-        plane.receiveShadow = true;
 
 
         // rotate and position the plane
