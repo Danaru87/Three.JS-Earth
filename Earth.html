@@ -21,6 +21,7 @@
     var cameraControl;
     var sphere;
     var cloud;
+    var moon;
 
     /**
      * Initializes the scene, camera and objects. Called when the window is
@@ -64,19 +65,24 @@
         cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
         cloud.castShadow = true;
 
-        // create ground
+        // Create moon
+        var textureMoon = THREE.ImageUtils.loadTexture('Fichiers/textures/planets/moonmap4k.jpg');
+        var moonGeometry = new THREE.SphereGeometry(1, 28, 28);
+        var moonMaterial = new THREE.MeshPhongMaterial({map:textureMoon});
+        moon = new THREE.Mesh(moonGeometry, moonMaterial);
+        moon.castShadow = true;
+
+        // create sphere ground
         var textureEspace = THREE.ImageUtils.loadTexture('Fichiers/textures/starry-deep-outer-space-galaxy.jpg');
-        var planeGeometry = new THREE.PlaneBufferGeometry(1000,1000);
-        var planeMaterial = new THREE.MeshPhongMaterial({map : textureEspace});
+        var planeGeometry = new THREE.SphereGeometry(100, 50, 50);
+        var planeMaterial = new THREE.MeshPhongMaterial({map : textureEspace, side: THREE.BackSide });
         var plane = new THREE.Mesh(planeGeometry, planeMaterial);
         plane.receiveShadow = true;
 
 
         // rotate and position the plane
-        plane.position.x = 0;
-        plane.position.y = 200;
-        plane.position.z = -5;
-
+        plane.position.x = sphere.position.x;
+        moon.position.x = 25;
         scene.add(plane);
 
         var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
@@ -89,7 +95,7 @@
         // Add the sphere to the scene
         scene.add(sphere);
         scene.add(cloud);
-
+        scene.add(moon);
         // add the output of the renderer to the html element
         document.body.appendChild(renderer.domElement);
 
@@ -107,11 +113,15 @@
         // render using requestAnimationFrame
         var rotSpeed = 0.001;
         var cloudRotSpeed = 0.0007;
+        var moonSpeed = 0.01;
         //camera.position.x = camera.position.x * Math.cos(rotSpeed) + camera.position.z * Math.sin(rotSpeed);
         //camera.position.z = camera.position.z * Math.cos(rotSpeed) - camera.position.x * Math.sin(rotSpeed);
         sphere.rotation.y = sphere.rotation.y + rotSpeed;
+        moon.position.x = moon.position.x * Math.cos(moonSpeed) + moon.position.z * Math.sin(moonSpeed);
+        moon.position.z = moon.position.z * Math.cos(moonSpeed) - moon.position.x * Math.sin(moonSpeed);
         cloud.rotation.y = cloud.rotation.y + cloudRotSpeed;
         camera.lookAt(scene.position);
+        moon.lookAt(sphere.position);
         cameraControl.update();
         requestAnimationFrame(render);
         renderer.render(scene, camera);
