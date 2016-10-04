@@ -11,6 +11,7 @@
     <script src="libs/MaskPass.js"></script>
     <script src="libs/jquery-1.9.0.js"></script>
     <script src="libs/jquery.csv.js"></script>
+    <script src="libs/Projector.js"></script>
     <style>
         body {
             /* set margin to 0 and overflow to hidden, to go fullscreen */
@@ -35,6 +36,10 @@
     var PI = Math.PI;
     var nameCity = [];
     var nuclearName = [];
+    var collidableObjects = [];
+    var projector = new THREE.Projector();
+
+
     /**
      * Initializes the scene, camera and objects. Called when the window is
      * loaded by using window.onload (see below)
@@ -99,7 +104,7 @@
 	sceneBG = new THREE.Scene();
 
 	var materialColor = new THREE.MeshBasicMaterial({ map:universeTexture, depthTest: false });
-	var bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), materialColor);
+	var bgPlane = new THREE.Mesh(new THREE.PlaneBufferGeometry(1, 1), materialColor);
 	bgPlane.position.z = - 100;
 	bgPlane.scale.set(window.innerWidth * 2, window.innerHeight * 2, 1);
 	sceneBG.add(bgPlane);
@@ -129,7 +134,7 @@
         cameraBG.position.z = 50;
         sceneBG = new THREE.Scene();
         var materialColor = new THREE.MeshBasicMaterial({map:THREE.ImageUtils.loadTexture("textures/starry-deep-outer-space-galaxy.jpg"), depthTest:false});
-        var bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(1,1), materialColor);
+        var bgPlane = new THREE.Mesh(new THREE.PlaneBufferGeometry(1,1), materialColor);
         bgPlane.position.z = -100;
         bgPlane.scale.set(window.innerWidth * 2, window.innerHeight * 2, 1);
         sceneBG.add(bgPlane);
@@ -151,6 +156,7 @@
         // by requestAnimationFrame
 
         addCities();
+        addNuclear();
         render();
     }
 
@@ -165,8 +171,8 @@
     	var moonRotSpeed = 0.005;
       theta += dTheta;
 
-    	earth.rotation.y -= rotSpeed;
-      cloud.rotation.y -= cloudRotSpeed;
+    	/*earth.rotation.y -= rotSpeed;
+      cloud.rotation.y -= cloudRotSpeed;*/
 
       moon.position.x = r*Math.cos(theta);
     	moon.position.z = r*Math.sin(theta);
@@ -223,10 +229,35 @@
 
       marker.add(pointer);
       earth.add(marker);
-
+      collidableObjects.push(pointer);
       var rad = PI / 180;
       marker.quaternion.setFromEuler(
         new THREE.Euler(0, lon * rad, lat * rad, "YZX")
+      );
+    }
+
+    function addMarkerNuclear(Nuclear){
+      // Reacteurs actifs
+      pointerActif = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.25 * Nuclear.activeReact, 0.02),
+        new THREE.MeshPhongMaterial({color: '#ff0000'})
+      );
+
+      pointerActif.position.set(10,0,0);
+      pointerActif.name = "pointer";
+
+      pointerActif.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), new THREE.Vector3(1,0,0));
+
+      marker = new THREE.Object3D;
+      marker.name = name;
+
+      marker.add(pointerActif);
+      earth.add(marker);
+      collidableObjects.push(pointerActif);
+
+      var rad = PI / 180;
+      marker.quaternion.setFromEuler(
+        new THREE.Euler(0, Nuclear.lon * rad, Nuclear.lat * rad, "YZX")
       );
     }
 
@@ -238,7 +269,6 @@
         success:function(csvd){
 
           data = $.csv.toArrays(csvd);
-          console.log(data);
           obj = new THREE.Object3D;
           for(var i in data){
             if(i!==0){
@@ -263,15 +293,19 @@
         success:function(csvd){
 
           data = $.csv.toArrays(csvd);
-          console.log(data);
           obj = new THREE.Object3D;
           for(var i in data){
             if(i!==0){
-              var name = data[i][0];
-              nuclearName.push(name);
-              var lat = data[i][2];
-              var lon = data[i][1];
-              addMarker(name, lat, lon);
+              var Nuclear = {};
+              Nuclear.country = data[i][0];
+              Nuclear.name = data[i][1];
+              Nuclear.lat = data[i][2].split(',')[0];
+              Nuclear.lon = data[i][2].split(',')[1];
+              Nuclear.totalReact = data[i][3];
+              Nuclear.activeReact = data[i][4];
+              Nuclear.underConstruction = data[i][6];
+              Nuclear.shutDownReact = data[i][6];
+              addMarkerNuclear(Nuclear);
             }
           }
           obj.add(earth);
@@ -283,6 +317,26 @@
     window.onload = init;
     // calls the handleResize function when the window is resized
     window.addEventListener('resize', handleResize, false);
+
+    function onDocumentMouseDown(event){
+      event.preventDefault();
+      var vector = new THREE.Vector3(
+        (event.clientX / window.innerWidth) * 2 -1,
+        -(event.clientY / window.innerHeight)*2 + 1,
+        0.5
+      );
+      console.log(collidableObjects);
+      projector.unprojectVector(vector, camera);
+      var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+      var intersects = raycaster.intersectObjects(collidableObjects);
+      console.log(intersects);
+      if(intersects.length > 0){
+        //intersects[0].object.material.transparent = true;
+        intersects[0].object.material.color = new THREE.Color('#00ff00');
+      }
+    }
+
+    window.onmousedown = onDocumentMouseDown;
 
 </script>
 <body>
