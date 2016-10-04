@@ -2,8 +2,13 @@
 <html>
 <head>
     <title>01.01 - Basic scene</title>
-    <script src="Fichiers/libs/three.js"></script>
-    <script src="Fichiers/libs/OrbitControls.js"></script>
+    <script src="libs/three.js"></script>
+    <script src="libs/OrbitControls.js"></script>
+    <script src="libs/EffectComposer.js"></script>
+    <script src="libs/RenderPass.js"></script>
+    <script src="libs/CopyShader.js"></script>
+    <script src="libs/ShaderPass.js"></script>
+    <script src="libs/MaskPass.js"></script>
     <style>
         body {
             /* set margin to 0 and overflow to hidden, to go fullscreen */
@@ -18,8 +23,8 @@
     var renderer;
     var scene;
     var camera;
-    var cameraControl;
-    var sphere;
+    var cameraControl;	
+    var earth;
     var cloud;
     var moon;
 
@@ -47,54 +52,91 @@
         camera.position.z = 13;
         camera.lookAt(scene.position);
 
-        cameraControl = new THREE.OrbitControls(camera);
+	//camera.lookAt(scene.position);
+
+	// add controls
+	cameraControl = new THREE.OrbitControls(camera);
+
+	// texture
+	var earthTexture = THREE.ImageUtils.loadTexture("textures/planets/earth.jpg");
+	var cloudTexture = THREE.ImageUtils.loadTexture("textures/planets/fair_clouds_4k.png");
+	var moonTexture = THREE.ImageUtils.loadTexture("textures/planets/moonbump4k.jpg");
+	var universeTexture = THREE.ImageUtils.loadTexture("textures/starry-deep-outer-space-galaxy.jpg");
+
+        // Create a earth
+	var geometry = new THREE.SphereGeometry( 5, 32, 32 );
+	var material = new THREE.MeshPhongMaterial( {map: earthTexture} );
+	earth = new THREE.Mesh( geometry, material );
+	earth.castShadow = true;
+
+	// Create clouds
+	var geometry = new THREE.SphereGeometry( 5.05, 32, 32 );
+	var material = new THREE.MeshPhongMaterial( {map: cloudTexture, transparent: true, opacity: 0.6} );
+	cloud = new THREE.Mesh( geometry, material );
+	cloud.castShadow = true;
+	
+	// Create moon
+	var geometry = new THREE.SphereGeometry( 1, 32, 32);
+	var material = new THREE.MeshPhongMaterial( {map: moonTexture } );
+	moon = new THREE.Mesh( geometry, material );
+	moon.castShadow = true;
+
+	// Create universe
+	//var geometry = new THREE.SphereGeometry(100, 50, 50);
+	//var material = new THREE.MeshPhongMaterial( {map:universeTexture, side: THREE.BackSide} );
+	//universe = new THREE.Mesh(geometry, material);
+
+	// Othogonal camera
+	cameraBG = new THREE.OrthographicCamera(-window.innerWidth, window.innerWidth, window.innerHeight, - window.innerHeight, -10000, 10000);
+	cameraBG.position.z = 50;
+	sceneBG = new THREE.Scene();
+
+	var materialColor = new THREE.MeshBasicMaterial({ map:universeTexture, depthTest: false });
+	var bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), materialColor);
+	bgPlane.position.z = - 100;
+	bgPlane.scale.set(window.innerWidth * 2, window.innerHeight * 2, 1);
+	sceneBG.add(bgPlane);
+
+	// Create Light
+	var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
+	directionalLight.position.set( 1, 1, 1 );
+
+	var light = new THREE.AmbientLight( 0x404040 ); // soft white light
+	
+
+	scene.add( light );
+	scene.add( directionalLight );
+	scene.add( earth );
+	scene.add( cloud );
+	scene.add( moon );
+	//scene.add( universe );
+
+	moon.position.x = -20;
+
+        // create a render, sets the background color and the size
+        renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor(0x000000, 1.0);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMapEnabled = true;
+        cameraBG = new THREE.OrthographicCamera(-window.innerWidth, window.innerWidth, window.innerHeight, -window.innerHeight, -10000, 10000);
+        cameraBG.position.z = 50;
+        sceneBG = new THREE.Scene();
+        var materialColor = new THREE.MeshBasicMaterial({map:THREE.ImageUtils.loadTexture("textures/starry-deep-outer-space-galaxy.jpg"), depthTest:false});
+        var bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(1,1), materialColor);
+        bgPlane.position.z = -100;
+        bgPlane.scale.set(window.innerWidth * 2, window.innerHeight * 2, 1);
+        sceneBG.add(bgPlane);
+        var bgPass = new THREE.RenderPass(sceneBG, cameraBG);
+        var renderPass = new THREE.RenderPass(scene, camera);
+        renderPass.clear = false;
+        var effectCopy = new THREE.ShaderPass(THREE.CopyShader);
+        effectCopy.renderToScreen = true;
+        composer = new THREE.EffectComposer(renderer);
+        composer.addPass(bgPass);
+        composer.addPass(renderPass);
+        composer.addPass(effectCopy);
 
 
-
-        // Create a sphere Earth
-        var textureEarth = THREE.ImageUtils.loadTexture('Fichiers/textures/planets/earthmap10k.jpg');
-        var sphereGeometry = new THREE.SphereGeometry(5,32,32);
-        var sphereMaterial = new THREE.MeshPhongMaterial({map:textureEarth});
-        sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere.castShadow = true;
-
-        // Create a sphere Cloud
-        var textureCloud = THREE.ImageUtils.loadTexture('Fichiers/textures/planets/fair_clouds_4k.png');
-        var cloudGeometry = new THREE.SphereGeometry(5.05,32,32);
-        var cloudMaterial = new THREE.MeshPhongMaterial({map:textureCloud, transparent:true, opacity:0.6});
-        cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
-        cloud.castShadow = true;
-
-        // Create moon
-        var textureMoon = THREE.ImageUtils.loadTexture('Fichiers/textures/planets/moonmap4k.jpg');
-        var moonGeometry = new THREE.SphereGeometry(1, 28, 28);
-        var moonMaterial = new THREE.MeshPhongMaterial({map:textureMoon});
-        moon = new THREE.Mesh(moonGeometry, moonMaterial);
-        moon.castShadow = true;
-
-        // create sphere ground
-        var textureEspace = THREE.ImageUtils.loadTexture('Fichiers/textures/starry-deep-outer-space-galaxy.jpg');
-        var planeGeometry = new THREE.SphereGeometry(100, 50, 50);
-        var planeMaterial = new THREE.MeshPhongMaterial({map : textureEspace, side: THREE.BackSide });
-        var plane = new THREE.Mesh(planeGeometry, planeMaterial);
-
-
-        // rotate and position the plane
-        plane.position.x = sphere.position.x;
-        moon.position.x = 25;
-        scene.add(plane);
-
-        var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
-        directionalLight.position.set(10, 5, 1);
-        scene.add(directionalLight);
-
-        var light = new THREE.AmbientLight( 0x404040 ); // soft white light
-        scene.add( light );
-
-        // Add the sphere to the scene
-        scene.add(sphere);
-        scene.add(cloud);
-        scene.add(moon);
         // add the output of the renderer to the html element
         document.body.appendChild(renderer.domElement);
 
@@ -109,21 +151,29 @@
      */
     function render() {
 
-        // render using requestAnimationFrame
-        var rotSpeed = 0.001;
+	var rotSpeed = 0.001;
         var cloudRotSpeed = 0.0007;
-        var moonSpeed = 0.01;
-        //camera.position.x = camera.position.x * Math.cos(rotSpeed) + camera.position.z * Math.sin(rotSpeed);
-        //camera.position.z = camera.position.z * Math.cos(rotSpeed) - camera.position.x * Math.sin(rotSpeed);
-        sphere.rotation.y = sphere.rotation.y + rotSpeed;
-        moon.position.x = moon.position.x * Math.cos(moonSpeed) + moon.position.z * Math.sin(moonSpeed);
-        moon.position.z = moon.position.z * Math.cos(moonSpeed) - moon.position.x * Math.sin(moonSpeed);
+	var moonRotSpeed = 0.005;
+
+	earth.rotation.y = earth.rotation.y + rotSpeed;
         cloud.rotation.y = cloud.rotation.y + cloudRotSpeed;
-        camera.lookAt(scene.position);
-        moon.lookAt(sphere.position);
+
+        moon.position.x = moon.position.x * Math.cos(moonRotSpeed) + moon.position.z * Math.sin(moonRotSpeed);
+	moon.position.z = moon.position.z * Math.cos(moonRotSpeed) - moon.position.x * Math.sin(moonRotSpeed);
+
+	camera.lookAt(scene.position);
+	moon.lookAt(earth.position);
+
         cameraControl.update();
+
+        // render using requestAnimationFrame
+        renderer.autoClear = false;
+        composer.render();
+
+
         requestAnimationFrame(render);
         renderer.render(scene, camera);
+
     }
 
 
