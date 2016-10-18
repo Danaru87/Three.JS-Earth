@@ -56,14 +56,17 @@
                 vertex.z = value * 10;
             }
 
+
             plane.computeVertexNormals(true);
             plane.computeFaceNormals();
 
             var mat = new THREE.MeshPhongMaterial();
-            mat.map = THREE.ImageUtils.loadTexture("textures/general/floor-wood.jpg");
-            //plane.faces[0].color = new THREE.Color(scale(getHighPoint(plane, plane.faces[0])).hex());
-            //plane.faces[1].color = new THREE.Color(scale(getHighPoint(plane, plane.faces[1])).hex());
+            //mat.map = THREE.ImageUtils.loadTexture("textures/general/floor-wood.jpg");
+            mat.vertexColors = THREE.FaceColors;
 
+            for(var i =0; i < plane.faces.length; i++){
+              plane.faces[i].color = new THREE.Color("#32cd32");
+            }
             var groundMesh = new THREE.Mesh(plane, mat);
 
             scene.add(groundMesh);
