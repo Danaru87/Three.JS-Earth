@@ -21,7 +21,7 @@
     var scene;
     var camera;
     var perlin;
-
+    var scale = chroma.scale(['blue', 'green', 'red']).domain([0, 10]);
     /**
      * Initializes the scene, camera and objects. Called when the window is
      * loaded by using window.onload (see below)
@@ -46,31 +46,6 @@
         cameraControl = new THREE.OrbitControls(camera);
 
         var scale = chroma.scale(['blue', 'green', 'red']).domain([0,10]);
-
-        function create3DTerrain(height) {
-            var plane = new THREE.PlaneGeometry(120, 100, 100, 100);
-
-            for (var i = 0; i < plane.vertices.length; i++) {
-                var vertex = plane.vertices[i];
-                var value =  Math.abs(perlin.noise(vertex.x / 10, vertex.y / 10, 0));
-                vertex.z = value * 10;
-            }
-
-
-            plane.computeVertexNormals(true);
-            plane.computeFaceNormals();
-
-            var mat = new THREE.MeshPhongMaterial();
-            //mat.map = THREE.ImageUtils.loadTexture("textures/general/floor-wood.jpg");
-            mat.vertexColors = THREE.FaceColors;
-
-            for(var i =0; i < plane.faces.length; i++){
-              plane.faces[i].color = new THREE.Color("#32cd32");
-            }
-            var groundMesh = new THREE.Mesh(plane, mat);
-
-            scene.add(groundMesh);
-        }
 
         create3DTerrain(100);
 
@@ -126,6 +101,48 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    function create3DTerrain(height) {
+        var plane = new THREE.PlaneGeometry(120, 100, 100, 100);
+
+        for (var i = 0; i < plane.vertices.length; i++) {
+            var vertex = plane.vertices[i];
+            var value =  Math.abs(perlin.noise(vertex.x / 10, vertex.y / 10, 0));
+            vertex.z = value * 10;
+        }
+
+        for (var i = 0; i < plane.faces.length; i++){
+          //console.log(scale(getHighPoint(plane, plane.faces[i])).hex());
+          plane.faces[i].color = new THREE.Color(scale(getHighPoint(plane, plane.faces[i])).hex());
+        }
+
+        plane.computeVertexNormals(true);
+        plane.computeFaceNormals();
+
+        var mat = new THREE.MeshPhongMaterial();
+
+        //mat.map = THREE.ImageUtils.loadTexture("textures/general/floor-wood.jpg");
+        //plane.faces[0].color = new THREE.Color(scale(getHighPoint(plane, plane.faces[0])).hex());
+        //plane.faces[1].color = new THREE.Color(scale(getHighPoint(plane, plane.faces[1])).hex());
+        mat.vertexColors = THREE.FaceColors;
+
+        var groundMesh = new THREE.Mesh(plane, mat);
+
+        var cyl = new THREE.CylinderGeometry(2,2,6);
+        var top = new THREE.SphereGeometry(2);
+        var bot = new THREE.SphereGeometry(2);
+
+        var topMesh = new THREE.Mesh(top);
+        var botMesh = new THREE.Mesh(bot);
+
+        scene.add(groundMesh);
+    }
+
+      function getHighPoint(geometry, face) {
+        var v1 = geometry.vertices[face.a].z;
+        var v2 = geometry.vertices[face.b].z;
+        var v3 = geometry.vertices[face.c].z;
+        return Math.max(v1, v2, v3);
+      }
     // calls the init function when the window is done loading.
     window.onload = init;
     // calls the handleResize function when the window is resized
