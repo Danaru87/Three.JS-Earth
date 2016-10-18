@@ -142,9 +142,9 @@
           200
         );
 
-        var sphere = new THREE.SphereGeometry(3.5, 32, 32);
+        var sphere = new THREE.SphereGeometry(1.5, 100, 100);
         var sphereMat = Physijs.createMaterial(
-          new THREE.MeshPhongMaterial({map:THREE.ImageUtils.loadTexture('textures/general/metal-rust.jpg')}),
+          new THREE.MeshPhongMaterial({map:THREE.ImageUtils.loadTexture('textures/general/302_death_star_surface.jpg')}),
           .2, //High Friction
           .2 // low restitution
         );
@@ -152,13 +152,13 @@
         var sphereMesh = new Physijs.SphereMesh(
           sphere,
           sphereMat,
-          5
+          10
         );
-
-        groundMesh.receiveShadow = true;
-        groundMesh.rotation.x = 300;
         sphereMesh.position.y = 50;
         scene.add(sphereMesh);
+        groundMesh.receiveShadow = true;
+        groundMesh.rotation.x = 300;
+
         scene.add(groundMesh);
     }
 
