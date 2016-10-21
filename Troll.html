@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>01.01 - Basic scene</title>
+    <script src="libs/three.js"></script>
+    <script src="libs/OrbitControls.js"></script>
+    <script src="libs/perlin.js"></script>
+    <script src="libs/chroma.js"></script>
+    <script type="text/javascript" src="libs/physi.js"></script>
+
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<script>
+
+    // global variables
+    var renderer;
+    var mesh;
+    var sphereMesh;
+    var clock = new THREE.Clock();
+    Physijs.scripts.worker = 'libs/physijs_worker.js';
+    Physijs.scripts.ammo = 'ammo.js';
+    var scene = new Physijs.Scene;
+    scene.setGravity(new THREE.Vector3(0, -50, 0));
+
+    var camera;
+    var perlin;
+    var scale = chroma.scale(['blue', 'green', 'red']).domain([0, 10]);
+    /**
+     * Initializes the scene, camera and objects. Called when the window is
+     * loaded by using window.onload (see below)
+     */
+    function init() {
+
+        perlin = new Perlin(new Date().getTime());
+
+        // create a camera, which defines where we're looking at.
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // position and point the camera to the center of the scene
+        camera.position.x = 0;
+        camera.position.y = 25;
+        camera.position.z = -100;
+        camera.lookAt(scene.position);
+
+        // add controls
+        cameraControl = new THREE.OrbitControls(camera);
+
+        var scale = chroma.scale(['blue', 'green', 'red']).domain([0,10]);
+
+        create3DTerrain(100);
+        // create a render, sets the background color and the size
+        renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor(0x000000, 1.0);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMapEnabled = true;
+
+        // add spotlight for the shadows
+        var spotlight = new THREE.AmbientLight(0xffffff);
+        spotlight.position.set(10, 20, 20);
+        spotlight.shadowCameraNear = 20;
+        spotlight.shadowCameraFar = 50;
+
+        scene.add(spotlight);
+
+        // add the output of the renderer to the html element
+        document.body.appendChild(renderer.domElement);
+
+        // call the render function, after the first render, interval is determined
+        // by requestAnimationFrame
+        render();
+    }
+
+    /**
+     * Called when the scene needs to be rendered. Delegates to requestAnimationFrame
+     * for future renders
+     */
+    function render() {
+        var delta = clock.getDelta();
+
+        if (mesh){
+          mesh.updateAnimation(delta * 1000);
+          mesh.position.y = sphereMesh.position.y;
+          mesh.position.x = sphereMesh.position.x;
+          mesh.position.z = sphereMesh.position.z;
+        }
+
+        // render using requestAnimationFrame
+        requestAnimationFrame(render);
+
+        scene.simulate(undefined, 1);
+        // update stats
+        //stats.update();
+
+        // update the camera
+        cameraControl.update();
+
+        // and render the scene
+
+        renderer.render(scene, camera);
+
+
+    }
+
+
+    /**
+     * Function handles the resize event. This make sure the camera and the renderer
+     * are updated at the correct moment.
+     */
+    function handleResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function create3DTerrain(height) {
+        var plane = new THREE.PlaneGeometry(400, 400, 200, 200);
+
+        for (var i = 0; i < plane.vertices.length; i++) {
+            var vertex = plane.vertices[i];
+            var value =  Math.abs(perlin.noise(vertex.x / 10, vertex.y / 10, 0));
+            vertex.z = value * 10;
+        }
+
+
+
+        plane.computeVertexNormals(true);
+        plane.computeFaceNormals();
+
+        var mat = Physijs.createMaterial(
+          new THREE.MeshPhongMaterial({map:THREE.ImageUtils.loadTexture('textures/general/floor-wood.jpg')}),
+          .9, //High Friction
+          .6 // low restitution
+        );
+        mat.vertexColors = THREE.FaceColors;
+        mat.map = THREE.ImageUtils.loadTexture("textures/general/plaster.jpg");
+        //plane.faces[0].color = new THREE.Color(scale(getHighPoint(plane, plane.faces[0])).hex());
+        //plane.faces[1].color = new THREE.Color(scale(getHighPoint(plane, plane.faces[1])).hex());
+
+
+        var groundMesh = new Physijs.HeightfieldMesh(
+          plane,
+          mat,
+          0,
+          200,
+          200
+        );
+
+        var sphere = new THREE.SphereGeometry(5, 100, 100);
+        var sphereMat = Physijs.createMaterial(
+          new THREE.MeshPhongMaterial({transparent: true, opacity: 0.1}),
+          .2, //High Friction
+          .2 // low restitution
+        );
+
+        sphereMesh = new Physijs.SphereMesh(
+          sphere,
+          sphereMat,
+          10
+        );
+        sphereMesh.position.y = 150;
+        scene.add(sphereMesh);
+
+        var loader = new THREE.JSONLoader();
+        loader.load('ogro/ogro-light.js', function(geometry, mat){
+          geometry.computeMorphNormals();
+          var mat = new THREE.MeshLambertMaterial({
+            map: THREE.ImageUtils.loadTexture("ogro/skins/ogrobase.png"),
+            morphTargets: true, morphNormals: true
+          });
+
+          mesh = new THREE.MorphAnimMesh(geometry, mat);
+          mesh.scale.set(0.2,0.2,0.2);
+          mesh.parseAnimations();
+          mesh.playAnimation('stand', 10);
+          mesh.position.y = sphereMesh.position.y;
+          mesh.position.x = sphereMesh.position.x;
+          mesh.position.z = sphereMesh.position.z;
+          scene.add(mesh);
+        });
+
+
+        groundMesh.receiveShadow = true;
+        groundMesh.rotation.x = 300;
+
+        scene.add(groundMesh);
+    }
+
+      function getHighPoint(geometry, face) {
+        var v1 = geometry.vertices[face.a].z;
+        var v2 = geometry.vertices[face.b].z;
+        var v3 = geometry.vertices[face.c].z;
+        return Math.max(v1, v2, v3);
+      }
+    // calls the init function when the window is done loading.
+    window.onload = init;
+    // calls the handleResize function when the window is resized
+    window.addEventListener('resize', handleResize, false);
+
+</script>
+<body>
+</body>
+</html>
